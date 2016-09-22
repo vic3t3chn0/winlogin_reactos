@@ -18,7 +18,6 @@
 #include <malloc.h>
 
 #include "main.h"
-
 void UpdateWindowCaption(BOOL clearModifyAlert);
 
 #endif /* _WINLOGIN_H */

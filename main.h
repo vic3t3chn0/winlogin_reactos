@@ -23,7 +23,6 @@
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 
-#include "notepad_res.h"
 
 #define EDIT_STYLE_WRAP (WS_CHILD | WS_VSCROLL \
     | ES_AUTOVSCROLL | ES_MULTILINE | ES_NOHIDESEL)
@@ -84,9 +83,9 @@ typedef struct
     FINDREPLACE find;
     WNDPROC EditProc;
     RECT main_rect;
-} NOTEPAD_GLOBALS;
+} WINLOGIN_GLOBALS;
 
-extern NOTEPAD_GLOBALS Globals;
+extern WINLOGIN_GLOBALS Globals;
 
 VOID SetFileName(LPCTSTR szFileName);
 

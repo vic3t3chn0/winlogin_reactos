@@ -1,27 +1,3 @@
-/*
- *  Notepad
- *
- *  Copyright 2000 Mike McCormack <Mike_McCormack@looksmart.com.au>
- *  Copyright 1997,98 Marcel Baur <mbaur@g26.ethz.ch>
- *  Copyright 2002 Sylvain Petreolle <spetreolle@yahoo.fr>
- *  Copyright 2002 Andriy Palamarchuk
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *
- */
-
 #include "winlogin.h"
 
 #include <strsafe.h>
@@ -35,19 +11,6 @@ VOID WINLOGIN_EnableSearchMenu()
                    MF_BYCOMMAND | ((GetWindowTextLength(Globals.hEdit) == 0) ? MF_DISABLED | MF_GRAYED : MF_ENABLED));
     EnableMenuItem(Globals.hMenu, CMD_SEARCH_NEXT,
                    MF_BYCOMMAND | ((GetWindowTextLength(Globals.hEdit) == 0) ? MF_DISABLED | MF_GRAYED : MF_ENABLED));
-}
-
-/***********************************************************************
- *
- *           SetFileName
- *
- *  Sets Global File Name.
- */
-VOID SetFileName(LPCTSTR szFileName)
-{
-    StringCchCopy(Globals.szFileName, ARRAY_SIZE(Globals.szFileName), szFileName);
-    Globals.szFileTitle[0] = 0;
-    GetFileTitle(szFileName, Globals.szFileTitle, ARRAY_SIZE(Globals.szFileTitle));
 }
 
 /***********************************************************************
@@ -103,147 +66,6 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
     return 0;
 }
 
-/***********************************************************************
- *
- *           NOTEPAD_FindTextAt
- */
-
-static BOOL
-NOTEPAD_FindTextAt(FINDREPLACE *pFindReplace, LPCTSTR pszText, int iTextLength, DWORD dwPosition)
-{
-    BOOL bMatches;
-    size_t iTargetLength;
-
-    if ((!pFindReplace) || (!pszText))
-    {
-        return FALSE;
-    }
-
-    iTargetLength = _tcslen(pFindReplace->lpstrFindWhat);
-
-    /* Make proper comparison */
-    if (pFindReplace->Flags & FR_MATCHCASE)
-        bMatches = !_tcsncmp(&pszText[dwPosition], pFindReplace->lpstrFindWhat, iTargetLength);
-    else
-        bMatches = !_tcsnicmp(&pszText[dwPosition], pFindReplace->lpstrFindWhat, iTargetLength);
-
-    if (bMatches && pFindReplace->Flags & FR_WHOLEWORD)
-    {
-        if ((dwPosition > 0) && !_istspace(pszText[dwPosition-1]))
-            bMatches = FALSE;
-        if ((dwPosition < (DWORD) iTextLength - 1) && !_istspace(pszText[dwPosition+1]))
-            bMatches = FALSE;
-    }
-
-    return bMatches;
-}
-
-/***********************************************************************
- *
- *           NOTEPAD_FindNext
- */
-
-BOOL NOTEPAD_FindNext(FINDREPLACE *pFindReplace, BOOL bReplace, BOOL bShowAlert)
-{
-    int iTextLength, iTargetLength;
-    size_t iAdjustment = 0;
-    LPTSTR pszText = NULL;
-    DWORD dwPosition, dwBegin, dwEnd;
-    BOOL bMatches = FALSE;
-    TCHAR szResource[128], szText[128];
-    BOOL bSuccess;
-
-    iTargetLength = (int) _tcslen(pFindReplace->lpstrFindWhat);
-
-    /* Retrieve the window text */
-    iTextLength = GetWindowTextLength(Globals.hEdit);
-    if (iTextLength > 0)
-    {
-        pszText = (LPTSTR) HeapAlloc(GetProcessHeap(), 0, (iTextLength + 1) * sizeof(TCHAR));
-        if (!pszText)
-            return FALSE;
-
-        GetWindowText(Globals.hEdit, pszText, iTextLength + 1);
-    }
-
-    SendMessage(Globals.hEdit, EM_GETSEL, (WPARAM) &dwBegin, (LPARAM) &dwEnd);
-    if (bReplace && ((dwEnd - dwBegin) == (DWORD) iTargetLength))
-    {
-        if (NOTEPAD_FindTextAt(pFindReplace, pszText, iTextLength, dwBegin))
-        {
-            SendMessage(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM) pFindReplace->lpstrReplaceWith);
-            iAdjustment = _tcslen(pFindReplace->lpstrReplaceWith) - (dwEnd - dwBegin);
-        }
-    }
-
-    if (pFindReplace->Flags & FR_DOWN)
-    {
-        /* Find Down */
-        dwPosition = dwEnd;
-        while(dwPosition < (DWORD) iTextLength)
-        {
-            bMatches = NOTEPAD_FindTextAt(pFindReplace, pszText, iTextLength, dwPosition);
-            if (bMatches)
-                break;
-            dwPosition++;
-        }
-    }
-    else
-    {
-        /* Find Up */
-        dwPosition = dwBegin;
-        while(dwPosition > 0)
-        {
-            dwPosition--;
-            bMatches = NOTEPAD_FindTextAt(pFindReplace, pszText, iTextLength, dwPosition);
-            if (bMatches)
-                break;
-        }
-    }
-
-    if (bMatches)
-    {
-        /* Found target */
-        if (dwPosition > dwBegin)
-            dwPosition += (DWORD) iAdjustment;
-        SendMessage(Globals.hEdit, EM_SETSEL, dwPosition, dwPosition + iTargetLength);
-        SendMessage(Globals.hEdit, EM_SCROLLCARET, 0, 0);
-        bSuccess = TRUE;
-    }
-    else
-    {
-        /* Can't find target */
-        if (bShowAlert)
-        {
-            LoadString(Globals.hInstance, STRING_CANNOTFIND, szResource, ARRAY_SIZE(szResource));
-            _sntprintf(szText, ARRAY_SIZE(szText), szResource, pFindReplace->lpstrFindWhat);
-            LoadString(Globals.hInstance, STRING_NOTEPAD, szResource, ARRAY_SIZE(szResource));
-            MessageBox(Globals.hFindReplaceDlg, szText, szResource, MB_OK);
-        }
-        bSuccess = FALSE;
-    }
-
-    if (pszText)
-        HeapFree(GetProcessHeap(), 0, pszText);
-    return bSuccess;
-}
-
-/***********************************************************************
- *
- *           NOTEPAD_ReplaceAll
- */
-
-static VOID NOTEPAD_ReplaceAll(FINDREPLACE *pFindReplace)
-{
-    BOOL bShowAlert = TRUE;
-
-    SendMessage(Globals.hEdit, EM_SETSEL, 0, 0);
-
-    while (NOTEPAD_FindNext(pFindReplace, TRUE, bShowAlert))
-    {
-        bShowAlert = FALSE;
-    }
-}
 
 /***********************************************************************
  *
@@ -258,7 +80,7 @@ static VOID NOTEPAD_FindTerm(VOID)
 /***********************************************************************
  * Data Initialization
  */
-static VOID NOTEPAD_InitData(VOID)
+static VOID WINLOGIN_InitData(VOID)
 {
     LPTSTR p = Globals.szFilter;
     static const TCHAR txt_files[] = _T("*.txt");
@@ -309,183 +131,11 @@ static VOID NOTEPAD_InitMenuPopup(HMENU menu, LPARAM index)
     DrawMenuBar(Globals.hMainWnd);
 }
 
-LRESULT CALLBACK EDIT_WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{ 
-    switch (msg)
-    {
-        case WM_KEYDOWN:
-        case WM_KEYUP:
-        {
-            switch (wParam)
-            {
-                case VK_UP:
-                case VK_DOWN:
-                case VK_LEFT:
-                case VK_RIGHT:
-                    DIALOG_StatusBarUpdateCaretPos();
-                    break;
-                default:
-                {
-                    UpdateWindowCaption(FALSE);
-                    break;
-                }
-            }
-        }
-        case WM_LBUTTONUP:
-        {
-            DIALOG_StatusBarUpdateCaretPos();
-            break;
-        }
-    }
-    return CallWindowProc( Globals.EditProc, hWnd, msg, wParam, lParam);
-}
 
 /***********************************************************************
  *
  *           NOTEPAD_WndProc
  */
-static LRESULT
-WINAPI
-NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg)
-    {
-
-    case WM_CREATE:
-        Globals.hMenu = GetMenu(hWnd);
-        break;
-
-    case WM_COMMAND:
-        if (HIWORD(wParam) == EN_CHANGE || HIWORD(wParam) == EN_HSCROLL || HIWORD(wParam) == EN_VSCROLL)
-            DIALOG_StatusBarUpdateCaretPos();
-        if ((HIWORD(wParam) == EN_CHANGE))
-            NOTEPAD_EnableSearchMenu();
-        NOTEPAD_MenuCommand(LOWORD(wParam));
-        break;
-
-    case WM_DESTROYCLIPBOARD:
-        /*MessageBox(Globals.hMainWnd, "Empty clipboard", "Debug", MB_ICONEXCLAMATION);*/
-        break;
-
-    case WM_CLOSE:
-        if (DoCloseFile()) {
-            if (Globals.hFont)
-                DeleteObject(Globals.hFont);
-            if (Globals.hDevMode)
-                GlobalFree(Globals.hDevMode);
-            if (Globals.hDevNames)
-                GlobalFree(Globals.hDevNames);
-            DestroyWindow(hWnd);
-        }
-        break;
-
-    case WM_QUERYENDSESSION:
-        if (DoCloseFile()) {
-            return 1;
-        }
-        break;
-
-    case WM_DESTROY:
-        SetWindowLongPtr(Globals.hEdit, GWLP_WNDPROC, (LONG_PTR)Globals.EditProc);
-        NOTEPAD_SaveSettingsToRegistry();
-        PostQuitMessage(0);
-        break;
-
-    case WM_SIZE:
-    {
-        if (Globals.bShowStatusBar == TRUE && Globals.bWrapLongLines == FALSE)
-        {
-            RECT rcStatusBar;
-            HDWP hdwp;
-
-            if (!GetWindowRect(Globals.hStatusBar, &rcStatusBar))
-                break;
-
-            hdwp = BeginDeferWindowPos(2);
-            if (hdwp == NULL)
-                break;
-
-            hdwp = DeferWindowPos(hdwp,
-                                  Globals.hEdit,
-                                  NULL,
-                                  0,
-                                  0,
-                                  LOWORD(lParam),
-                                  HIWORD(lParam) - (rcStatusBar.bottom - rcStatusBar.top),
-                                  SWP_NOZORDER | SWP_NOMOVE);
-
-            if (hdwp == NULL)
-                break;
-
-            hdwp = DeferWindowPos(hdwp,
-                                  Globals.hStatusBar,
-                                  NULL,
-                                  0,
-                                  0,
-                                  LOWORD(lParam),
-                                  LOWORD(wParam),
-                                  SWP_NOZORDER);
-
-            if (hdwp != NULL)
-                EndDeferWindowPos(hdwp);
-        }
-        else
-            SetWindowPos(Globals.hEdit,
-                         NULL,
-                         0,
-                         0,
-                         LOWORD(lParam),
-                         HIWORD(lParam),
-                         SWP_NOZORDER | SWP_NOMOVE);
-
-        break;
-    }
-
-    /* The entire client area is covered by edit control and by
-     * the status bar. So there is no need to erase main background.
-     * This resolves the horrible flicker effect during windows resizes. */
-    case WM_ERASEBKGND:
-        return 1;
-
-    case WM_SETFOCUS:
-        SetFocus(Globals.hEdit);
-        break;
-
-    case WM_DROPFILES:
-    {
-        TCHAR szFileName[MAX_PATH];
-        HDROP hDrop = (HDROP) wParam;
-
-        DragQueryFile(hDrop, 0, szFileName, ARRAY_SIZE(szFileName));
-        DragFinish(hDrop);
-        DoOpenFile(szFileName);
-        break;
-    }
-    case WM_CHAR:
-    case WM_INITMENUPOPUP:
-        NOTEPAD_InitMenuPopup((HMENU)wParam, lParam);
-        break;
-    default:
-        if (msg == aFINDMSGSTRING)
-        {
-            FINDREPLACE *pFindReplace = (FINDREPLACE *) lParam;
-            Globals.find = *(FINDREPLACE *) lParam;
-
-            if (pFindReplace->Flags & FR_FINDNEXT)
-                NOTEPAD_FindNext(pFindReplace, FALSE, TRUE);
-            else if (pFindReplace->Flags & FR_REPLACE)
-                NOTEPAD_FindNext(pFindReplace, TRUE, TRUE);
-            else if (pFindReplace->Flags & FR_REPLACEALL)
-                NOTEPAD_ReplaceAll(pFindReplace);
-            else if (pFindReplace->Flags & FR_DIALOGTERM)
-                NOTEPAD_FindTerm();
-            break;
-        }
-
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-    return 0;
-}
 
 static int AlertFileDoesNotExist(LPCTSTR szFileName)
 {
@@ -583,7 +233,8 @@ static BOOL HandleCommandLine(LPTSTR cmdline)
  *
  *           WinMain
  */
-int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int show)
+ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hinstPrev,
+                   LPSTR lpCmdLine, int nShowCmd)
 {
     MSG msg;
     HACCEL hAccel;
@@ -591,9 +242,11 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int sh
     HMONITOR monitor;
     MONITORINFO info;
     INT x, y;
+    HWND hwnd;
 
     static const TCHAR className[] = _T("Notepad");
     static const TCHAR winName[] = _T("Notepad");
+
 
     switch (GetUserDefaultUILanguage())
     {
@@ -611,25 +264,12 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int sh
 
     ZeroMemory(&Globals, sizeof(Globals));
     Globals.hInstance = hInstance;
-    NOTEPAD_LoadSettingsFromRegistry();
+    WINLOGIN_LoadSettingsFromRegistry();
 
-    ZeroMemory(&wndclass, sizeof(wndclass));
-    wndclass.cbSize = sizeof(wndclass);
-    wndclass.lpfnWndProc = NOTEPAD_WndProc;
-    wndclass.hInstance = Globals.hInstance;
-    wndclass.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_NPICON));
-    wndclass.hCursor = LoadCursor(0, IDC_ARROW);
-    wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wndclass.lpszMenuName = MAKEINTRESOURCE(MAIN_MENU);
-    wndclass.lpszClassName = className;
-    wndclass.hIconSm = (HICON)LoadImage(hInstance,
-                                        MAKEINTRESOURCE(IDI_NPICON),
-                                        IMAGE_ICON,
-                                        16,
-                                        16,
-                                        0);
+    g_hinst = hinst;
+    DWORD *pMessage;
 
-    if (!RegisterClassEx(&wndclass)) return FALSE;
+        if (!RegisterClassEx(&wndclass)) return FALSE;
 
     /* Setup windows */
 
@@ -645,28 +285,37 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int sh
         Globals.main_rect.bottom < info.rcWork.top)
         x = y = CW_USEDEFAULT;
 
-    Globals.hMainWnd = CreateWindow(className,
-                                    winName,
-                                    WS_OVERLAPPEDWINDOW,
-                                    x,
-                                    y,
-                                    Globals.main_rect.right - Globals.main_rect.left,
-                                    Globals.main_rect.bottom - Globals.main_rect.top,
-                                    NULL,
-                                    NULL,
-                                    Globals.hInstance,
-                                    NULL);
-    if (!Globals.hMainWnd)
-    {
-        ShowLastError();
-        ExitProcess(1);
+
+
+    if (!InitApp()) return 0;
+
+    if (SUCCEEDED(CoInitialize(NULL))) {/* In case we use COM */
+
+        hwnd = CreateWindow(
+            TEXT("Scratch"),                /* Class Name */
+            TEXT("Scratch"),                /* Title */
+            WS_OVERLAPPEDWINDOW,            /* Style */
+            CW_USEDEFAULT, CW_USEDEFAULT,   /* Position */
+            CW_USEDEFAULT, CW_USEDEFAULT,   /* Size */
+            NULL,                           /* Parent */
+            NULL,                           /* No menu */
+            hinst,                          /* Instance */
+            0);                             /* No special parameters */
+
+        ShowWindow(hwnd, nShowCmd);
+
+        while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        CoUninitialize();
     }
 
     DoCreateEditWindow();
 
-    NOTEPAD_InitData();
-    DIALOG_FileNew();
-
+    WINLOGIN_InitData();
+   
     ShowWindow(Globals.hMainWnd, show);
     UpdateWindow(Globals.hMainWnd);
     DragAcceptFiles(Globals.hMainWnd, TRUE);
@@ -680,6 +329,66 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int sh
 
     hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(ID_ACCEL));
 
+
+
+    //-- wait for the process to finish
+while (true)
+{
+  //-- see if the task has terminated
+  DWORD dwExitCode = WaitForSingleObject(ProcessInfo.hProcess, 0);
+
+  if (   (dwExitCode == WAIT_FAILED   )
+      || (dwExitCode == WAIT_OBJECT_0 )
+      || (dwExitCode == WAIT_ABANDONED) )
+  {
+    DWORD dwExitCode;
+
+    //-- get the process exit code
+    GetExitCodeProcess(ProcessInfo.hProcess, &dwExitCode);
+
+    //-- the task has ended so close the handle
+    CloseHandle(ProcessInfo.hThread);
+    CloseHandle(ProcessInfo.hProcess);
+
+    //-- save the exit code
+    lExitCode = dwExitCode;
+
+    return;
+  }
+  else
+  {
+    //-- see if there are any message that need to be processed
+    while (PeekMessage(&message.msg, 0, 0, 0, PM_NOREMOVE))
+    {
+      if (message.msg.message == WM_QUIT)
+      {
+        return;
+      }
+
+      //-- process the message queue
+      if (GetMessage(&message.msg, 0, 0, 0))
+      {
+        //-- process the message
+        TranslateMessage(&Message->msg);
+        DispatchMessage(&pMessage->msg);
+      }
+    }
+  }
+
+    return 0;
+}
+
+
+int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE prev, LPTSTR cmdline, int show)
+{
+
+    if (!Globals.hMainWnd)
+    {
+        ShowLastError();
+        ExitProcess(1);
+    }
+
+    
     while (GetMessage(&msg, 0, 0, 0))
     {
         if (!IsDialogMessage(Globals.hFindReplaceDlg, &msg) &&
