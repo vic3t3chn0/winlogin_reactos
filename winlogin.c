@@ -151,6 +151,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hinstPrev,
     HWND hwnd;
 
     g_hinst = hinst;
+    DWORD *pMessage;
 
     if (!InitApp()) return 0;
 
@@ -216,11 +217,13 @@ while (true)
       if (GetMessage(&message.msg, 0, 0, 0))
       {
         //-- process the message
-        TranslateMessage(&pMessage->msg);
+        TranslateMessage(&Message->msg);
         DispatchMessage(&pMessage->msg);
       }
     }
   }
 
     return 0;
+}
+
 }
