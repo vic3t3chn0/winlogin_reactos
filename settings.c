@@ -1,9 +1,4 @@
 /*
- *  Notepad (settings.c)
- *
- *  Copyright 1998,99 Marcel Baur <mbaur@g26.ethz.ch>
- *  Copyright 2002 Sylvain Petreolle <spetreolle@yahoo.fr>
- *  Copyright 2002 Andriy Palamarchuk
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -107,9 +102,9 @@ static BOOL QueryString(HKEY hKey, LPCTSTR pszValueName, LPTSTR pszResult, DWORD
 
 /***********************************************************************
  *
- *           NOTEPAD_LoadSettingsFromRegistry
+ *           WINLOGIN_LoadSettingsFromRegistry
  *
- *  Load settings from registry HKCU\Software\Microsoft\Notepad.
+ *  Load settings from registry HKCU\Software\Microsoft\winlogin.
  */
 void WINLOGIN_LoadSettingsFromRegistry(void)
 {

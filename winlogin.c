@@ -1,12 +1,43 @@
 #define STRICT
+
 #include <windows.h>
-#include <windowsx.h>
-#include <ole2.h>
-#include <commctrl.h>
-#include <shlwapi.h>
-#include <tchar.h>
-HINSTANCE g_hinst;                          /* This application's HINSTANCE */
-HWND g_hwndChild;                           /* Optional child window */
+
+#include <winlogin.h>
+
+
+// Register the window class.
+const wchart_t g_szClassName[]  = "WinLogin Class";
+    
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+WINLOGIN_GLOBALS Globals;
+
+
+/***********************************************************************
+ * Data Initialization
+ */
+/*static VOID WINLOGIN_InitData(VOID)
+{
+    LPTSTR p = Globals.szFilter;
+    static const TCHAR txt_files[] = _T("*.txt");
+    static const TCHAR all_files[] = _T("*.*");
+
+    p += LoadString(Globals.hInstance, STRING_TEXT_FILES_TXT, p, MAX_STRING_LEN) + 1;
+    _tcscpy(p, txt_files);
+    p += ARRAY_SIZE(txt_files);
+
+    p += LoadString(Globals.hInstance, STRING_ALL_FILES, p, MAX_STRING_LEN) + 1;
+    _tcscpy(p, all_files);
+    p += ARRAY_SIZE(all_files);
+    *p = '\0';
+    Globals.find.lpstrFindWhat = NULL;
+
+    Globals.hDevMode = NULL;
+    Globals.hDevNames = NULL;
+}
+*/
+
+
 
 /*
  *  OnSize
@@ -42,95 +73,73 @@ OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
-/*
- *  PaintContent
- *      Interesting things will be painted here eventually.
+
+
+/***********************************************************************
+ *
+ *           WinMain
  */
-void
-PaintContent(HWND hwnd, PAINTSTRUCT *pps)
+ int WINAPI WinMain(HINSTANCE hInstance, 
+                HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-}
 
-/*
- *  OnPaint
- *      Paint the content as part of the paint cycle.
- */
-void
-OnPaint(HWND hwnd)
-{
-    PAINTSTRUCT ps;
-    BeginPaint(hwnd, &ps);
-    PaintContent(hwnd, &ps);
-    EndPaint(hwnd, &ps);
-}
+    WINLOGIN_LoadSettingsFromRegistry(void);
+    WINLOGIN_SaveSettingsToRegistry(void);
 
-/*
- *  OnPrintClient
- *      Paint the content as requested by USER.
- */
-void
-OnPrintClient(HWND hwnd, HDC hdc)
-{
-    PAINTSTRUCT ps;
-    ps.hdc = hdc;
-    GetClientRect(hwnd, &ps.rcPaint);
-    PaintContent(hwnd, &ps);
-
-}
-
-/*
- *  Window procedure
- */
-LRESULT CALLBACK
-WndProc(HWND hwnd, UINT uiMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uiMsg) {
-
-    HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
-    HANDLE_MSG(hwnd, WM_SIZE, OnSize);
-    HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
-    HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
-    case WM_PRINTCLIENT: OnPrintClient(hwnd, (HDC)wParam); return 0;
-    }
-
-    return DefWindowProc(hwnd, uiMsg, wParam, lParam);
-}
-
-BOOL
-InitApp(void)
-{
-    WNDCLASS wc;
-
+   
+    wc.cbsize   = sizeof(WNDCLASSEX);
     wc.style = 0;
     wc.lpfnWndProc = WndProc;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.hInstance = g_hinst;
-    wc.hIcon = NULL;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszMenuName = NULL;
-    wc.lpszClassName = TEXT("Scratch");
+    wc.hInstance = hInstance;
+    wc.lpszClassName = g_szClassName;
 
-    if (!RegisterClass(&wc)) return FALSE;
+    if(!RegisterClassEx(&wc)){
+        return 0;
+    }
 
-    InitCommonControls();               /* In case we use a common control */
+    switch (GetUserDefaultUILanguage())
+    {
+    case MAKELANGID(LANG_HEBREW, SUBLANG_DEFAULT):
+        SetProcessDefaultLayout(LAYOUT_RTL);
+        break;
 
-    return TRUE;
+    default:
+        break;
+    }
+
+    //WINLOGIN_InitData();
+
+    
+    // Create the window.
+
+   hwnd = CreateWindowEx(
+        WS_EX_CLIENTEDGE,
+        g_szClassName,
+        "WinLogin",                     // Window text
+        WS_OVERLAPPEDWINDOW,            // Window style
+    CW_USEDEFAULT, CW_USEDEFAULT. 240, 120, NULL, NULL, hInstance, NULL);  // Size and position
+
+
+    if (hwnd == NULL)
+    {
+        return 0;
+    }
+
+    ShowWindow(hwnd, nCmdShow);
+    UpdateWindow(hwnd);
+
+
+
+    // Run the message loop.
+    while(GetMessage(&Msg, NULL, 0,0) > 0){
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
+    
+
+    return Msg.wParam;
+
 }
 
-HWND CreateFullscreenWindow(HWND hwnd)
-{
- HMONITOR hmon = MonitorFromWindow(hwnd,
-                                   MONITOR_DEFAULTTONEAREST);
- MONITORINFO mi = { sizeof(mi) };
- if (!GetMonitorInfo(hmon, &mi)) return NULL;
- return CreateWindow(TEXT("static"),
-       TEXT("something interesting might go here"),
-       WS_POPUP | WS_VISIBLE,
-       mi.rcMonitor.left,
-       mi.rcMonitor.top,
-       mi.rcMonitor.right - mi.rcMonitor.left,
-       mi.rcMonitor.bottom - mi.rcMonitor.top,
-       hwnd, NULL, g_hinst, 0);
-}
