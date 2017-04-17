@@ -93,8 +93,7 @@ NET_API_STATUS NetUser( LPWSTR lpszDomain,
         err = 0;
         break;
     case ERROR_INVALID_PARAMETER:
-        printf("Invalid parameter error adding local group; parameter index = %d\n",
-                err, parm_err);
+        printf("Invalid parameter error adding local group; parameter index = %d\n");
         NetApiBufferFree( lpszPrimaryDC );
         return( err );
     default:
