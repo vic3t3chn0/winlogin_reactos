@@ -44,7 +44,7 @@ BOOL IsWow64()
 //more for win32
 
 // Evaluate  User or Admin
-BOOL IsElevated( ) {
+/*BOOL IsElevated( ) {
     BOOL fRet = FALSE;
     HANDLE hToken = NULL;
     if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
@@ -58,7 +58,7 @@ BOOL IsElevated( ) {
         CloseHandle( hToken );
     }
     return fRet;
-}
+}*/
 
 void CreateProcess(){
 
