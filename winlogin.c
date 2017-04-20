@@ -16,7 +16,7 @@ WINLOGIN_GLOBALS Globals;
 /***********************************************************************
  * Data Initialization
  */
-/*static VOID WINLOGIN_InitData(VOID)
+static VOID WINLOGIN_InitData(VOID)
 {
     LPTSTR p = Globals.szFilter;
     static const TCHAR txt_files[] = _T("*.txt");
@@ -35,7 +35,6 @@ WINLOGIN_GLOBALS Globals;
     Globals.hDevMode = NULL;
     Globals.hDevNames = NULL;
 }
-*/
 
 
 
@@ -43,35 +42,35 @@ WINLOGIN_GLOBALS Globals;
  *  OnSize
  *      If we have an inner child, resize it to fit.
  */
-void
+/**void
 OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
     if (g_hwndChild) {
         MoveWindow(g_hwndChild, 0, 0, cx, cy, TRUE);
     }
-}
+}*/
 
 /*
  *  OnCreate
  *      Applications will typically override this and maybe even
  *      create a child window.
  */
-BOOL
+/**BOOL
 OnCreate(HWND hwnd, LPCREATESTRUCT lpcs)
 {
     return TRUE;
-}
+}*/
 
 /*
  *  OnDestroy
  *      Post a quit message because our application is over when the
  *      user closes this window.
  */
-void
+/**void
 OnDestroy(HWND hwnd)
 {
     PostQuitMessage(0);
-}
+}*/
 
 
 
@@ -109,7 +108,7 @@ OnDestroy(HWND hwnd)
         break;
     }
 
-    //WINLOGIN_InitData();
+    WINLOGIN_InitData();
 
     
     // Create the window.
@@ -142,4 +141,3 @@ OnDestroy(HWND hwnd)
     return Msg.wParam;
 
 }
-
